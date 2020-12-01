@@ -118,7 +118,7 @@ sendftp(){
 cd $backupdir
 
 #if  [ ! "mountpoint /media/ftp" ];then
-curlftpfs ftp://user1502524:3BAWqkfrfubw@80.89.231.109/BackUp/frutto /media/ftp
+curlftpfs ftp://login:passwd@IPaddres/BackUp/frutto /media/ftp
 #fi
 
 #if [ `date +%w` -eq "5" ];then
