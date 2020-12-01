@@ -34,10 +34,3 @@ do
         rm -R $backupdir/$i
     fi
 done
-
-
-
-
-
-crontab -e
-40 03 * * * /media/arhive/backupfileshare.sh > /dev/null 2>&1
