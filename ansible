@@ -1,0 +1,78 @@
+- name: обновление пакетов и 1с сервера
+  hosts: dedicated
+  become: yes
+  become_method: sudo
+  become_user: root
+  gather_facts: false
+
+  vars_prompt:
+    - name: version
+      prompt: "Введите номер версии дистрибутива (Server64_8_3_20_[version].tar.gz)"
+      private: no
+  vars:
+  #  version: 1590
+    distr1c: server64_8_3_20_{{version}}.tar.gz
+    path1c: /opt/1cv8/x86_64/8.3.20.
+    
+  tasks:
+    - name: Обновить кеш репозитория
+      apt: update_cache=yes force_apt_get=yes cache_valid_time=3600
+      tags: upd
+    - name: Обновить все пакеты
+      apt: upgrade=dist force_apt_get=yes
+      tags: upd
+    - name: Проверить если пакеты для autoremove
+      command: apt-get --dry-run autoremove
+      register: check_autoremove
+      changed_when: False
+      tags: upd
+    - name: Удалить неиспользуемые пакеты
+      command: apt-get -y autoremove
+      when: "'packages will be REMOVED' in check_autoremove.stdout"
+      tags: upd
+    - name: Скопировать установочный архив {{distr1c}} 1с на сервер
+      copy: src="/mnt/d/ansible/dedicated/distr/{{distr1c}}" dest="/home"
+      tags: 1c 
+    - name: Распакоать установочный архив 1с
+      unarchive:
+        src: /home/{{distr1c}}
+        dest: /home/distr/
+        remote_src: yes
+      tags: 1c
+    - name: Установить новую версию 1с сервер
+      ansible.builtin.shell: "/home/distr/setup-full-8.3.20.{{version}}-x86_64.run  --mode unattended --enable-components server,ws,ru"
+      tags: 1ci
+    - name: Скопировать nethasp.ini в каталог {{path1c}}{{version}}/conf
+      copy: src="/mnt/d/ansible/dedicated/conf/nethasp.ini" dest="{{path1c}}{{version}}/conf"
+      tags: 1ci 
+    - name: Включаем Debug
+      lineinfile: dest={{path1c}}{{version}}/srv1cv83 insertafter="^SRV1CV8_VERSION=8.3.20.{{version}}" line="SRV1CV8_DEBUG=1"
+      tags: 1ci
+    - name:  Обновляем настройки WEB сервера Apache2
+      lineinfile: dest=/etc/apache2/apache2.conf
+                  regexp='^LoadModule _1cws_module "/opt/1cv8/x86_64/8.3'
+                  insertbefore=BOF
+                  line='LoadModule _1cws_module "/opt/1cv8/x86_64/8.3.20.{{version}}/wsap24.so"'
+      tags: 1cidb1
+    - name: Остановка службы srv1cv83 
+      service: name=srv1cv83 state=stopped enabled=yes
+      tags: 1cstop
+    - name: Создание символической ссылки в /etc/init.d
+      file: src={{path1c}}{{version}}/srv1cv83 dest=/etc/init.d/srv1cv83 state=link
+      tags: 1csl
+    - name: Запуск daemon-reload для применения изменений
+      ansible.builtin.systemd:
+        daemon_reload: yes
+      tags: 1csrl
+    - name: Перезапуск службы Apache2 
+      service: name=apache2 state=restartted enabled=yes
+      tags: 1cstart
+    - name: Запуск службы srv1cv83 
+      service: name=srv1cv83 state=restartted enabled=yes
+      tags: 1cstart
+    - name: Очистить каталог/home/distr/*
+      ansible.builtin.shell: rm -rf /home/distr/*
+      tags: 1cd
+    - name: Удалить установочный архив 1с /home/{{distr1c}}
+      ansible.builtin.shell: rm -rf /home/{{distr1c}}
+      tags: 1cd
