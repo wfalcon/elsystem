@@ -3,7 +3,7 @@
   become: yes
   become_method: sudo
   become_user: root
-  gather_facts: false
+  gather_facts: no
 
   vars_prompt:
     - name: version
@@ -15,11 +15,12 @@
     path1c: /opt/1cv8/x86_64/8.3.20.
     
   tasks:
-    - name: Обновить кеш репозитория
-      apt: update_cache=yes force_apt_get=yes cache_valid_time=3600
-      tags: upd
-    - name: Обновить все пакеты
-      apt: upgrade=dist force_apt_get=yes
+    - name: обновить кеш репозитория и пакеты
+      apt:
+        upgrade: dist
+        force_apt_get: yes
+        update_cache: yes
+        cache_valid_time: 3600
       tags: upd
     - name: Проверить если пакеты для autoremove
       command: apt-get --dry-run autoremove
