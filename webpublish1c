@@ -71,6 +71,6 @@ yugkadzp
 for dbname in $listdb
 do
 /opt/1cv8/x86_64/8.3.18.1363/webinst -publish -apache24 -wsdir $dbname -dir /var/www/$dbname/ -connstr "Srvr=192.168.1.250;Ref=$dbname;" -confPath /etc/apache2/apache2.conf
-echo https://77.233.14.22/$dbname >> ./weblist
+echo https://external_IP/$dbname >> ./weblist
 done
 systemctl restart apache2.service
